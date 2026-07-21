@@ -9,12 +9,12 @@ import com.yourstore.dto.response.ProductResponse;
 import com.yourstore.entity.Category;
 import com.yourstore.entity.City;
 import com.yourstore.service.*;
-import com.yourstore.service.OrderService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -50,11 +50,47 @@ public class AdminController {
 
     // ===== PRODUCT MANAGEMENT =====
 
-    @PostMapping("/products")
+    /**
+     * Create a new product with optional main image and thumbnails.
+     * This endpoint uses @ModelAttribute to bind individual form fields.
+     * Swagger will show separate fields for each product attribute.
+     */
+    @PostMapping(
+            value = "/products",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<ProductResponse> addProductWithImages(
+            @ModelAttribute @Valid ProductRequest productRequest,
+            @RequestPart(value = "mainImage", required = false) MultipartFile mainImage,
+            @RequestPart(value = "thumbnails", required = false) List<MultipartFile> thumbnails) {
+
+        // 1. Create the product
+        ProductResponse productResponse = productService.createProduct(productRequest);
+        Long productId = productResponse.getId();
+
+        // 2. Upload main image if present
+        if (mainImage != null && !mainImage.isEmpty()) {
+            productImageService.updateMainImage(productId, mainImage);
+        }
+
+        // 3. Upload thumbnails if present
+        if (thumbnails != null && !thumbnails.isEmpty()) {
+            productImageService.uploadThumbnails(thumbnails, productId);
+        }
+
+        // 4. Fetch the updated product with images
+        ProductResponse finalResponse = productService.getProductById(productId);
+        return new ResponseEntity<>(finalResponse, HttpStatus.CREATED);
+    }
+
+    // Keep the old JSON-only endpoint if you need it – comment back in if required
+    /*
+    @PostMapping("/products-json")
     public ResponseEntity<ProductResponse> addProduct(@Valid @RequestBody ProductRequest request) {
         ProductResponse response = productService.createProduct(request);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
+    */
 
     @PutMapping("/products/{id}")
     public ResponseEntity<ProductResponse> updateProduct(
@@ -75,7 +111,6 @@ public class AdminController {
     public ResponseEntity<ProductResponse> updateDiscount(
             @PathVariable Long id,
             @RequestParam Double discountValue) {
-
         ProductRequest request = new ProductRequest();
         request.setDiscountValue(BigDecimal.valueOf(discountValue));
         return ResponseEntity.ok(productService.updateProduct(id, request));
@@ -88,21 +123,27 @@ public class AdminController {
         return ResponseEntity.ok(productService.updateProduct(id, request));
     }
 
-    // ===== IMAGE MANAGEMENT =====
+    // ===== IMAGE MANAGEMENT (update/delete) =====
 
-    @PutMapping("/products/{id}/images/main")
+    @PutMapping(
+            value = "/products/{id}/images/main",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
     public ResponseEntity<ProductResponse> updateMainImage(
             @PathVariable Long id,
-            @RequestParam("image") MultipartFile image) {
+            @RequestPart("image") MultipartFile image) {
         productImageService.updateMainImage(id, image);
         return ResponseEntity.ok(productService.getProductById(id));
     }
 
-    @PutMapping("/products/{id}/images/thumbnails/{index}")
+    @PutMapping(
+            value = "/products/{id}/images/thumbnails/{index}",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
     public ResponseEntity<ProductResponse> updateThumbnail(
             @PathVariable Long id,
             @PathVariable int index,
-            @RequestParam("image") MultipartFile image) {
+            @RequestPart("image") MultipartFile image) {
         productImageService.updateThumbnail(id, index, image);
         return ResponseEntity.ok(productService.getProductById(id));
     }

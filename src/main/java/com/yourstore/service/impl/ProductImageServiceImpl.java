@@ -29,12 +29,9 @@ public class ProductImageServiceImpl implements ProductImageService {
     @Override
     public String uploadMainImage(MultipartFile file, Long productId) {
         Product product = getProduct(productId);
-
-        // Delete old main image if exists
         if (product.getMainImage() != null) {
             fileStorageService.deleteFile(product.getMainImage());
         }
-
         try {
             String subDir = "products/" + productId;
             String imageUrl = fileStorageService.saveFile(file, subDir);
@@ -49,15 +46,12 @@ public class ProductImageServiceImpl implements ProductImageService {
     @Override
     public List<String> uploadThumbnails(List<MultipartFile> files, Long productId) {
         Product product = getProduct(productId);
-        List<String> thumbnailUrls = new ArrayList<>();
-
-        // Delete old thumbnails if exist
         if (product.getThumbnails() != null && !product.getThumbnails().isEmpty()) {
             for (String url : product.getThumbnails()) {
                 fileStorageService.deleteFile(url);
             }
         }
-
+        List<String> thumbnailUrls = new ArrayList<>();
         try {
             String subDir = "products/" + productId;
             for (MultipartFile file : files) {
@@ -86,10 +80,8 @@ public class ProductImageServiceImpl implements ProductImageService {
     public void deleteThumbnail(Long productId, int index) {
         Product product = getProduct(productId);
         List<String> thumbnails = product.getThumbnails();
-
         if (thumbnails != null && index >= 0 && index < thumbnails.size()) {
-            String url = thumbnails.get(index);
-            fileStorageService.deleteFile(url);
+            fileStorageService.deleteFile(thumbnails.get(index));
             thumbnails.remove(index);
             product.setThumbnails(thumbnails);
             productRepository.save(product);
@@ -116,19 +108,14 @@ public class ProductImageServiceImpl implements ProductImageService {
     @Override
     public void updateThumbnail(Long productId, int index, MultipartFile file) {
         Product product = getProduct(productId);
-
-        // Delete existing thumbnail at index
         List<String> thumbnails = product.getThumbnails();
         if (thumbnails != null && index >= 0 && index < thumbnails.size()) {
             fileStorageService.deleteFile(thumbnails.get(index));
             thumbnails.remove(index);
         }
-
-        // Upload new thumbnail
         try {
             String subDir = "products/" + productId;
             String newUrl = fileStorageService.saveFile(file, subDir);
-
             if (thumbnails == null) {
                 thumbnails = new ArrayList<>();
             }
@@ -151,8 +138,6 @@ public class ProductImageServiceImpl implements ProductImageService {
         Product product = getProduct(productId);
         return product.getThumbnails() != null ? product.getThumbnails() : new ArrayList<>();
     }
-
-    // ===== PRIVATE HELPER =====
 
     private Product getProduct(Long productId) {
         return productRepository.findById(productId)
