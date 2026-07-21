@@ -63,7 +63,7 @@ public class CartServiceImpl implements CartService {
         }
 
         CartItem existingItem = cartItemRepository.findByUserAndProductId(user, product.getId()).orElse(null);
-
+// use the none null from object class 
         if (existingItem != null) {
             int newQuantity = existingItem.getQuantity() + request.getQuantity();
             if (newQuantity > product.getStock()) {
